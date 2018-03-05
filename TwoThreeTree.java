@@ -22,7 +22,7 @@ class TwoThreeTree
             this.root = new Node(n);
             return true;
         }
-        return root.addKey(n);
+        return this.root.addKeyRecurs(n, null);
 	}
 	/**
 	 * search the tree structure.
@@ -43,8 +43,12 @@ class TwoThreeTree
 	}
 
 	
-
-	public class Node implements Comparable<Node> 
+	/**
+	 * the reason this node class was internal is because its methods
+	 * hace implementation that is specifi for the 23tree data structure.
+	 * Therefore, its internal, not for general use.
+	 */
+	private class Node implements Comparable<Node> 
 	{
 
 		private ArrayList<Integer> keys;
@@ -56,38 +60,6 @@ class TwoThreeTree
 			this.keys.add(key);
 			this.children = new ArrayList<>(4);
 		}
-		
-		/**
-		 * get children's list.
-		 */
-		public ArrayList<Node> getChildrenList() 
-		{
-			return this.children;
-		}
-
-		/**
-		 * get the keys list
-		 */
-		public ArrayList<Integer> getKeyList() 
-		{
-			return this.keys;
-		}
-
-		/**
-		 * removes the smallest key in the list.
-		 */
-		public int removeSmallestKey()
-		{
-			return getKeyList().remove(0);
-		}
-
-		/**
-		 * removes the biggest key in the list.
-		 */
-		public int removeBiggestKey()
-		{
-			return getKeyList().remove(numOfKeys() -1);
-		}
 
 		/**
 		 * seach method returns the keys of the distination node whether key is found or not.
@@ -95,132 +67,85 @@ class TwoThreeTree
 		public String search(int n)
 		{
 			//print the keys if its a leaf node or if the key is found
-			if(isLeaf() || getKeyList().indexOf(n) != -1)
+			if(children.size() == 0 || keys.indexOf(n) != -1)
 				return getKeysString();
 
 			//find where to make the recursive call.
 			int i = 0;
-			while(i < numOfKeys() && n > this.keys.get(i))
+			while(i < keys.size() && n > keys.get(i))
 				i++;
 
-			return this.children.get(i).search(n);
+			return children.get(i).search(n);
 		}
 
 		/**
-		 * This method adds a key to the proper place in the tree. IT handles the splits
-		 * and increasing the height of the tree.
+		 * recursive implementation for adding keys to the tree.
 		 */
-		public boolean addKey(int n)
-		{
-			return root.addKeyRecurs(n, null);
-	
-		}
-
-
 		public boolean addKeyRecurs(int n, Node currentP )
 		{
 			boolean result = true;
 
-			if(getKeyList().contains(n))
+			//stop if the key exists
+			if(keys.contains(n))
 				return false;
 			
-			if(isLeaf())
+			//if the current node is a leaf, stop and add key.
+			if(children.size() == 0)
 			{
-				getKeyList().add(n);
-				Collections.sort(getKeyList());
+				keys.add(n);
+				Collections.sort(keys);
 			}
 			else
-			{
+			{//make the recursive call on the right child
 				int i = 0;
-				while(i < numOfKeys() && n > getKeyList().get(i))
+				while(i < keys.size() && n > keys.get(i))
 					i++;
 				
-				result = getChildrenList().get(i).addKeyRecurs(n,this);
+				result = children.get(i).addKeyRecurs(n,this);
 			}
 
-			if(numOfKeys() == 3)
+			//split when there are three keys.
+			if(keys.size() == 3)
 				split(currentP);
 			
 			return result;
 		}
 
-
+		/**
+		 * this method splits any node that has three keys, and increases the hieght of the tree
+		 * if the root has three keys.
+		 * @param parent it could be null to indicate the absence of a parent.
+		 */
 		public void split( Node parent )
 		{
-			Node left = new Node(getSmallestKey());
-			for(int i = 0; i < numOfChildren()/2 ; i++)
-				left.getChildrenList().add( getChildrenList().get(i) );
+			Node left = new Node(keys.get(0));
+			for(int i = 0; i < children.size()/2 ; i++)
+				left.children.add( children.get(i) );
 
-			Node right = new Node(getBiggestKey());
-			for(int i = numOfChildren()/2 ; i < numOfChildren() ; i++)
-				right.getChildrenList().add( getChildrenList().get(i) );
+			Node right = new Node(keys.get(this.keys.size() - 1));
+			for(int i = children.size()/2 ; i < children.size() ; i++)
+				right.children.add( children.get(i) );
 
 
 			if(parent == null)
-			{//this is root
-				removeSmallestKey();
-				removeBiggestKey();
+			{//this is root. we creat a new tree level.
+				keys.remove(0);
+				keys.remove(keys.size() -1);
 				this.children = new ArrayList<>(4);
-				getChildrenList().add(left);
-				getChildrenList().add(right);
+				children.add(left);
+				children.add(right);
 			}
 			else
-			{
-				parent.getKeyList().add( getKeyList().get(1) );
-				parent.getChildrenList().add(left);
-				parent.getChildrenList().add(right);
-				parent.getChildrenList().remove(this);
-				Collections.sort(parent.getChildrenList());
-				Collections.sort(parent.getKeyList());
+			{//insert into the parent. no need for a new tree level yet.
+				parent.keys.add( keys.get(1) );
+				parent.children.add(left);
+				parent.children.add(right);
+				parent.children.remove(this);
+				Collections.sort(parent.children);
+				Collections.sort(parent.keys);
 			}
 		}
 
-		/**
-		 * count the non null keys in the list.
-		 * @return num of keys.
-		 */
-		public int numOfKeys() 
-		{
-			return this.keys.size();
-		}
-
-		/**
-		 * counts the number of non null children in the list
-		 * @return number of children.
-		 */
-		public int numOfChildren() 
-		{
-			return this.children.size();
-		}
-
-		/**
-		 * return the small key.
-		 * @test check what get returned when a small does not exist.
-		 * @return
-		 */
-		public Integer getSmallestKey() 
-		{
-			return this.keys.get(0);
-		}
-
-		/**
-		 * returns the big key.
-		 * @test check what get returned when a big does not exist.
-		 * @return the big key.
-		 */
-		public Integer getBiggestKey() 
-		{
-			return this.keys.get(this.keys.size() - 1);
-		}
-
-		/**
-		 * checks if the node has any children.
-		 * @return true for no children.
-		 */
-		public boolean isLeaf() 
-		{
-			return numOfChildren() == 0;
-		}
 
 		/**
 		 * print the keys of the node.
@@ -228,17 +153,17 @@ class TwoThreeTree
 		public String getKeysString()
 		{
 			StringBuilder result = new StringBuilder();
-			result.append(getKeyList().get(0));
-			for(int i = 1; i < numOfKeys(); i++)
+			result.append(keys.get(0));
+			for(int i = 1; i < keys.size(); i++)
 			{
-				result.append(' ').append(getKeyList().get(i));
+				result.append(' ').append(keys.get(i));
 			}
 			return result.toString();
 		}
 
 		public int compareTo(Node other) 
 		{
-			return getBiggestKey() - other.getSmallestKey();
+			return keys.get(this.keys.size() - 1) - other.keys.get(0);
 		}
 
 	}
